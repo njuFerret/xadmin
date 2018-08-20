@@ -33,7 +33,7 @@ class WidgetTypeSelect(forms.Widget):
         super(WidgetTypeSelect, self).__init__(attrs)
         self._widgets = widgets
 
-    def render(self, name, value, attrs=None):
+    def render(self, name, value, attrs=None, renderer=None):
         if value is None:
             value = ''
         final_attrs = self.build_attrs(attrs, extra_attrs={'name': name})
@@ -86,7 +86,8 @@ class UserWidgetAdmin(object):
 
     def formfield_for_dbfield(self, db_field, **kwargs):
         if db_field.name == 'widget_type':
-            widgets = widget_manager.get_widgets(self.request.GET.get('page_id', ''))
+            widgets = widget_manager.get_widgets(
+                self.request.GET.get('page_id', ''))
             form_widget = WidgetTypeSelect(widgets)
             return forms.ChoiceField(choices=[(w.widget_type, w.description) for w in widgets],
                                      widget=form_widget, label=_('Widget Type'))
@@ -163,6 +164,7 @@ class WidgetManager(object):
     def get_widgets(self, page_id):
         return self._widgets.values()
 
+
 widget_manager = WidgetManager()
 
 
@@ -184,7 +186,8 @@ class BaseWidget(forms.Form):
     base_title = None
 
     id = forms.IntegerField(label=_('Widget ID'), widget=forms.HiddenInput)
-    title = forms.CharField(label=_('Widget Title'), required=False, widget=exwidgets.AdminTextInputWidget)
+    title = forms.CharField(
+        label=_('Widget Title'), required=False, widget=exwidgets.AdminTextInputWidget)
 
     def __init__(self, dashboard, data):
         self.dashboard = dashboard
@@ -315,7 +318,8 @@ class ModelBaseWidget(BaseWidget):
     app_label = None
     model_name = None
     model_perm = 'change'
-    model = ModelChoiceField(label=_(u'Target Model'), widget=exwidgets.AdminSelectWidget)
+    model = ModelChoiceField(label=_(u'Target Model'),
+                             widget=exwidgets.AdminSelectWidget)
 
     def __init__(self, dashboard, data):
         self.dashboard = dashboard
@@ -447,7 +451,8 @@ class ListWidget(ModelBaseWidget, PartialBaseWidget):
                                enumerate(filter(lambda c:c.field_name in base_fields, r.cells))]
                               for r in list_view.results()]
         context['result_count'] = list_view.result_count
-        context['page_url'] = self.model_admin_url('changelist') + "?" + urlencode(self.list_params)
+        context['page_url'] = self.model_admin_url(
+            'changelist') + "?" + urlencode(self.list_params)
 
 
 @widget_manager.register
@@ -504,14 +509,16 @@ class Dashboard(CommAdminView):
             if isinstance(widget_or_id, UserWidget):
                 widget = widget_or_id
             else:
-                widget = UserWidget.objects.get(user=self.user, page_id=self.get_page_id(), id=widget_or_id)
+                widget = UserWidget.objects.get(
+                    user=self.user, page_id=self.get_page_id(), id=widget_or_id)
             wid = widget_manager.get(widget.widget_type)
 
             class widget_with_perm(wid):
 
                 def context(self, context):
                     super(widget_with_perm, self).context(context)
-                    context.update({'has_change_permission': self.request.user.has_perm('xadmin.change_userwidget')})
+                    context.update({'has_change_permission': self.request.user.has_perm(
+                        'xadmin.change_userwidget')})
             wid_instance = widget_with_perm(self, data or widget.get_value())
             return wid_instance
         except UserWidget.DoesNotExist:
@@ -525,7 +532,8 @@ class Dashboard(CommAdminView):
             portal_col = []
             for opts in col:
                 try:
-                    widget = UserWidget(user=self.user, page_id=self.get_page_id(), widget_type=opts['type'])
+                    widget = UserWidget(
+                        user=self.user, page_id=self.get_page_id(), widget_type=opts['type'])
                     widget.set_value(opts)
                     widget.save()
                     portal_col.append(self.get_widget(widget))
@@ -551,7 +559,8 @@ class Dashboard(CommAdminView):
                 widgets = []
 
                 if portal_pos:
-                    user_widgets = dict([(uw.id, uw) for uw in UserWidget.objects.filter(user=self.user, page_id=self.get_page_id())])
+                    user_widgets = dict([(uw.id, uw) for uw in UserWidget.objects.filter(
+                        user=self.user, page_id=self.get_page_id())])
                     for col in portal_pos.split('|'):
                         ws = []
                         for wid in col.split(','):
@@ -581,7 +590,8 @@ class Dashboard(CommAdminView):
             'columns': [('col-sm-%d' % int(12 / len(self.widgets)), ws) for ws in self.widgets],
             'has_add_widget_permission': self.has_model_perm(UserWidget, 'add') and self.widget_customiz,
             'add_widget_url': self.get_admin_url('%s_%s_add' % (UserWidget._meta.app_label, UserWidget._meta.model_name)) +
-            "?user=%s&page_id=%s&_redirect=%s" % (self.user.id, self.get_page_id(), urlquote(self.request.get_full_path()))
+            "?user=%s&page_id=%s&_redirect=%s" % (
+                self.user.id, self.get_page_id(), urlquote(self.request.get_full_path()))
         }
         context = super(Dashboard, self).get_context()
         context.update(new_context)
@@ -605,10 +615,12 @@ class Dashboard(CommAdminView):
                         user=self.user, page_id=self.get_page_id(), id=widget_id)
                     widget.delete()
                     try:
-                        portal_pos = UserSettings.objects.get(user=self.user, key="dashboard:%s:pos" % self.get_page_id())
+                        portal_pos = UserSettings.objects.get(
+                            user=self.user, key="dashboard:%s:pos" % self.get_page_id())
                         pos = [[w for w in col.split(',') if w != str(
                             widget_id)] for col in portal_pos.value.split('|')]
-                        portal_pos.value = '|'.join([','.join(col) for col in pos])
+                        portal_pos.value = '|'.join(
+                            [','.join(col) for col in pos])
                         portal_pos.save()
                     except Exception:
                         pass
@@ -620,7 +632,8 @@ class Dashboard(CommAdminView):
     @filter_hook
     def get_media(self):
         media = super(Dashboard, self).get_media() + \
-            self.vendor('xadmin.page.dashboard.js', 'xadmin.page.dashboard.css')
+            self.vendor('xadmin.page.dashboard.js',
+                        'xadmin.page.dashboard.css')
         if self.widget_customiz:
             media = media + self.vendor('xadmin.plugin.portal.js')
         for ws in self.widgets:
